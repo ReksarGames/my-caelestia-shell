@@ -6,7 +6,9 @@ import QtQuick
 Item {
     id: root
 
-    readonly property var windows: Quickshell.screens.map(screen => windowComponent.createObject(root, { screen: screen }))
+    // Keep a single config editor window instead of one per screen to avoid duplicate popups.
+    property var window: null
+    readonly property var defaultScreen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : undefined
 
     Component {
         id: windowComponent
@@ -18,14 +20,15 @@ Item {
         target: ConfigEditor
 
         function onOpen(): void {
-            for (const window of windows) {
-                window.visible = true;
+            if (!root.window) {
+                root.window = windowComponent.createObject(root, { screen: root.defaultScreen });
             }
+            root.window.visible = true;
         }
 
         function onClose(): void {
-            for (const window of windows) {
-                window.visible = false;
+            if (root.window) {
+                root.window.visible = false;
             }
         }
     }
