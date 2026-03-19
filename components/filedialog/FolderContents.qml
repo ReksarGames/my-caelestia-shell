@@ -47,11 +47,11 @@ Item {
     }
 
     Loader {
+        asynchronous: true
         anchors.centerIn: parent
 
         opacity: view.count === 0 ? 1 : 0
         active: opacity > 0
-        asynchronous: true
 
         sourceComponent: ColumnLayout {
             MaterialIcon {

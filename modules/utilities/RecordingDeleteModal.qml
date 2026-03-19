@@ -15,11 +15,11 @@ Loader {
 
     required property var props
 
+    asynchronous: true
     anchors.fill: parent
 
     opacity: root.props.recordingConfirmDelete ? 1 : 0
     active: opacity > 0
-    asynchronous: true
 
     sourceComponent: MouseArea {
         id: deleteConfirmation

@@ -65,11 +65,11 @@ Item {
         Loader {
             id: current
 
+            asynchronous: true
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
             active: root.modelData?.variant === Schemes.currentVariant
-            asynchronous: true
 
             sourceComponent: MaterialIcon {
                 text: "check"

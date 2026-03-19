@@ -13,13 +13,15 @@ StyledClippingRect {
 
     required property ShellScreen screen
 
-    readonly property bool onSpecial: (Config.bar.workspaces.perMonitorWorkspaces ? Hypr.monitorFor(screen) : Hypr.focusedMonitor)?.lastIpcObject.specialWorkspace.name !== ""
+    readonly property bool onSpecial: (Config.bar.workspaces.perMonitorWorkspaces ? Hypr.monitorFor(screen) : Hypr.focusedMonitor)?.lastIpcObject?.specialWorkspace?.name !== ""
     readonly property int activeWsId: Config.bar.workspaces.perMonitorWorkspaces ? (Hypr.monitorFor(screen).activeWorkspace?.id ?? 1) : Hypr.activeWsId
 
-    readonly property var occupied: Hypr.workspaces.values.reduce((acc, curr) => {
-        acc[curr.id] = curr.lastIpcObject.windows > 0;
-        return acc;
-    }, {})
+    readonly property var occupied: {
+        const occ = {};
+        for (const ws of Hypr.workspaces.values)
+            occ[ws.id] = ws.lastIpcObject.windows > 0;
+        return occ;
+    }
     readonly property int groupOffset: Math.floor((activeWsId - 1) / Config.bar.workspaces.shown) * Config.bar.workspaces.shown
 
     property real blur: onSpecial ? 1 : 0
@@ -43,8 +45,8 @@ StyledClippingRect {
         }
 
         Loader {
-            active: Config.bar.workspaces.occupiedBg
             asynchronous: true
+            active: Config.bar.workspaces.occupiedBg
 
             anchors.fill: parent
             anchors.margins: Appearance.padding.small
@@ -76,9 +78,9 @@ StyledClippingRect {
         }
 
         Loader {
+            asynchronous: true
             anchors.horizontalCenter: parent.horizontalCenter
             active: Config.bar.workspaces.activeIndicator
-            asynchronous: true
 
             sourceComponent: ActiveIndicator {
                 activeWsId: root.activeWsId
@@ -110,11 +112,12 @@ StyledClippingRect {
     Loader {
         id: specialWs
 
+        asynchronous: true
+
         anchors.fill: parent
         anchors.margins: Appearance.padding.small
 
         active: opacity > 0
-        asynchronous: true
 
         scale: root.onSpecial ? 1 : 0.5
         opacity: root.onSpecial ? 1 : 0

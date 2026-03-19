@@ -33,9 +33,9 @@ Item {
         radius: Appearance.rounding.small
 
         Loader {
+            asynchronous: true
             anchors.centerIn: parent
             active: !root.client
-            asynchronous: true
 
             sourceComponent: ColumnLayout {
                 spacing: 0

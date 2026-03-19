@@ -15,7 +15,7 @@ Item {
 
     required property ShellScreen screen
     readonly property HyprlandMonitor monitor: Hypr.monitorFor(screen)
-    readonly property string activeSpecial: (Config.bar.workspaces.perMonitorWorkspaces ? monitor : Hypr.focusedMonitor)?.lastIpcObject.specialWorkspace.name ?? ""
+    readonly property string activeSpecial: (Config.bar.workspaces.perMonitorWorkspaces ? monitor : Hypr.focusedMonitor)?.lastIpcObject?.specialWorkspace?.name ?? ""
 
     layer.enabled: true
     layer.effect: OpacityMask {
@@ -164,10 +164,11 @@ Item {
             Loader {
                 id: label
 
+                asynchronous: true
+
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
                 Layout.preferredHeight: Config.bar.sizes.innerWidth - Appearance.padding.small * 2
 
-                asynchronous: true
                 sourceComponent: ws.icon.length === 1 ? letterComp : iconComp
 
                 Component {
@@ -193,13 +194,14 @@ Item {
             Loader {
                 id: windows
 
+                asynchronous: true
+
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillHeight: true
                 Layout.preferredHeight: implicitHeight
 
                 visible: active
                 active: ws.hasWindows
-                asynchronous: true
 
                 sourceComponent: Column {
                     spacing: 0
@@ -226,7 +228,11 @@ Item {
 
                     Repeater {
                         model: ScriptModel {
-                            values: Hypr.toplevels.values.filter(c => c.workspace?.id === ws.wsId)
+                            values: {
+                                const windows = Hypr.toplevels.values.filter(c => c.workspace?.id === ws.wsId);
+                                const maxIcons = Config.bar.workspaces.maxWindowIcons;
+                                return maxIcons > 0 ? windows.slice(0, maxIcons) : windows;
+                            }
                         }
 
                         MaterialIcon {
@@ -291,8 +297,8 @@ Item {
     }
 
     Loader {
-        active: Config.bar.workspaces.activeIndicator
         asynchronous: true
+        active: Config.bar.workspaces.activeIndicator
         anchors.fill: parent
 
         sourceComponent: Item {

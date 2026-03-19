@@ -55,13 +55,14 @@ ColumnLayout {
     Loader {
         id: windows
 
+        asynchronous: true
+
         Layout.alignment: Qt.AlignHCenter
         Layout.fillHeight: true
         Layout.topMargin: -Config.bar.sizes.innerWidth / 10
 
         visible: active
         active: root.hasWindows
-        asynchronous: true
 
         sourceComponent: Column {
             spacing: 0
@@ -88,7 +89,11 @@ ColumnLayout {
 
             Repeater {
                 model: ScriptModel {
-                    values: Hypr.toplevels.values.filter(c => c.workspace?.id === root.ws)
+                    values: {
+                        const windows = Hypr.toplevels.values.filter(c => c.workspace?.id === root.ws);
+                        const maxIcons = Config.bar.workspaces.maxWindowIcons;
+                        return maxIcons > 0 ? windows.slice(0, maxIcons) : windows;
+                    }
                 }
 
                 MaterialIcon {

@@ -6,6 +6,8 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import QtQuick
 
+import "./kblayout"
+
 Item {
     id: root
 
@@ -56,7 +58,7 @@ Item {
                 wrapper: root.wrapper
                 network: networkPopout.item?.passwordNetwork ?? null
             }
-            
+
             Connections {
                 target: root.wrapper
                 function onCurrentNameChanged() {
@@ -77,7 +79,7 @@ Item {
                     }
                 }
             }
-            
+
             Connections {
                 target: networkPopout
                 function onItemChanged() {
@@ -114,7 +116,9 @@ Item {
 
         Popout {
             name: "kblayout"
-            sourceComponent: KbLayout {}
+            sourceComponent: KbLayout {
+                wrapper: root.wrapper
+            }
         }
 
         Popout {
@@ -124,7 +128,7 @@ Item {
 
         Repeater {
             model: ScriptModel {
-                values: [...SystemTray.items.values]
+                values: SystemTray.items.values.filter(i => !Config.bar.tray.hiddenIcons.includes(i.id))
             }
 
             Popout {

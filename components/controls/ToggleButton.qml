@@ -102,8 +102,9 @@ StyledRect {
     // Tooltip - positioned absolutely, doesn't affect layout
     Loader {
         id: tooltipLoader
-        active: root.tooltip !== ""
+
         asynchronous: true
+        active: root.tooltip !== ""
         z: 10000
         width: 0
         height: 0
@@ -124,4 +125,3 @@ StyledRect {
         Layout.minimumHeight: 0
     }
 }
-

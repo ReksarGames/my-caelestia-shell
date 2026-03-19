@@ -14,8 +14,8 @@ StackView {
     required property Item popouts
     required property QsMenuHandle trayItem
 
-    implicitWidth: currentItem.implicitWidth
-    implicitHeight: currentItem.implicitHeight
+    implicitWidth: currentItem?.implicitWidth ?? 0
+    implicitHeight: currentItem?.implicitHeight ?? 0
 
     initialItem: SubMenu {
         handle: root.trayItem
@@ -81,11 +81,11 @@ StackView {
                 Loader {
                     id: children
 
+                    asynchronous: true
                     anchors.left: parent.left
                     anchors.right: parent.right
 
                     active: !item.modelData.isSeparator
-                    asynchronous: true
 
                     sourceComponent: Item {
                         implicitHeight: label.implicitHeight
@@ -115,12 +115,13 @@ StackView {
                         Loader {
                             id: icon
 
+                            asynchronous: true
                             anchors.left: parent.left
 
                             active: item.modelData.icon !== ""
-                            asynchronous: true
 
                             sourceComponent: IconImage {
+                                asynchronous: true
                                 implicitSize: label.implicitHeight
 
                                 source: item.modelData.icon
@@ -151,11 +152,11 @@ StackView {
                         Loader {
                             id: expand
 
+                            asynchronous: true
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.right: parent.right
 
                             active: item.modelData.hasChildren
-                            asynchronous: true
 
                             sourceComponent: MaterialIcon {
                                 text: "chevron_right"
@@ -168,8 +169,8 @@ StackView {
         }
 
         Loader {
-            active: menu.isSubMenu
             asynchronous: true
+            active: menu.isSubMenu
 
             sourceComponent: Item {
                 implicitWidth: back.implicitWidth
