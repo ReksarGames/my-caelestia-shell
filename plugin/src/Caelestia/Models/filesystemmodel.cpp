@@ -219,7 +219,7 @@ void FileSystemModel::watchDirIfRecursive(const QString& path) {
     if (m_recursive && m_watchChanges) {
         const auto currentDir = m_dir;
         const bool showHidden = m_showHidden;
-        const auto future = QtConcurrent::run([showHidden, path]() {
+        auto future = QtConcurrent::run([showHidden, path]() {
             QDir::Filters filters = QDir::Dirs | QDir::NoDotAndDotDot;
             if (showHidden) {
                 filters |= QDir::Hidden;
@@ -232,16 +232,12 @@ void FileSystemModel::watchDirIfRecursive(const QString& path) {
             }
             return dirs;
         });
-        const auto watcher = new QFutureWatcher<QStringList>(this);
-        connect(watcher, &QFutureWatcher<QStringList>::finished, this, [currentDir, showHidden, watcher, this]() {
-            const auto paths = watcher->result();
+        future.then(this, [currentDir, showHidden, this](const QStringList& paths) {
             if (currentDir == m_dir && showHidden == m_showHidden && !paths.isEmpty()) {
                 // Ignore if dir or showHidden has changed
                 m_watcher.addPaths(paths);
             }
-            watcher->deleteLater();
         });
-        watcher->setFuture(future);
     }
 }
 
@@ -295,7 +291,7 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
         oldPaths << entry->path();
     }
 
-    const auto future = QtConcurrent::run([=](QPromise<QPair<QSet<QString>, QSet<QString>>>& promise) {
+    auto future = QtConcurrent::run([=](QPromise<QPair<QSet<QString>, QSet<QString>>>& promise) {
         const auto flags = recursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags;
 
         std::optional<QDirIterator> iter;
@@ -353,7 +349,7 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
             newPaths.insert(path);
         }
 
-        if (promise.isCanceled() || newPaths == oldPaths) {
+        if (promise.isCanceled()) {
             return;
         }
 
@@ -365,23 +361,17 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
     }
     m_futures.insert(dir, future);
 
-    const auto watcher = new QFutureWatcher<QPair<QSet<QString>, QSet<QString>>>(this);
-
-    connect(watcher, &QFutureWatcher<QPair<QSet<QString>, QSet<QString>>>::finished, this, [dir, watcher, this]() {
-        m_futures.remove(dir);
-
-        if (!watcher->future().isResultReadyAt(0)) {
-            watcher->deleteLater();
-            return;
-        }
-
-        const auto result = watcher->result();
-        applyChanges(result.first, result.second);
-
-        watcher->deleteLater();
-    });
-
-    watcher->setFuture(future);
+    future
+        .then(this,
+            [dir, this](QPair<QSet<QString>, QSet<QString>> result) {
+                m_futures.remove(dir);
+                if (!result.first.isEmpty() || !result.second.isEmpty()) {
+                    applyChanges(result.first, result.second);
+                }
+            })
+        .onCanceled(this, [dir, this]() {
+            m_futures.remove(dir);
+        });
 }
 
 void FileSystemModel::applyChanges(const QSet<QString>& removedPaths, const QSet<QString>& addedPaths) {
@@ -430,39 +420,28 @@ void FileSystemModel::applyChanges(const QSet<QString>& removedPaths, const QSet
         return compareEntries(a, b);
     });
 
-    // Batch insert new entries
-    int insertStart = -1;
-    QList<FileSystemEntry*> batchItems;
-    for (const auto& entry : std::as_const(newEntries)) {
-        const auto it = std::lower_bound(
-            m_entries.begin(), m_entries.end(), entry, [this](const FileSystemEntry* a, const FileSystemEntry* b) {
+    // Batch insert new entries (each run lands contiguously before m_entries[row])
+    int i = 0;
+    while (i < newEntries.size()) {
+        const auto it = std::lower_bound(m_entries.begin(), m_entries.end(), newEntries[i],
+            [this](const FileSystemEntry* a, const FileSystemEntry* b) {
                 return compareEntries(a, b);
             });
         const auto row = static_cast<int>(it - m_entries.begin());
 
-        if (insertStart == -1) {
-            insertStart = row;
-            batchItems << entry;
-        } else if (row == insertStart + batchItems.size()) {
-            batchItems << entry;
-        } else {
-            beginInsertRows(QModelIndex(), insertStart, insertStart + static_cast<int>(batchItems.size()) - 1);
-            for (int i = 0; i < batchItems.size(); ++i) {
-                m_entries.insert(insertStart + i, batchItems[i]);
-            }
-            endInsertRows();
-
-            insertStart = row;
-            batchItems.clear();
-            batchItems << entry;
+        // Extend the run while the next new entry still sorts before the existing element at row
+        int j = i + 1;
+        while (j < newEntries.size() && (row >= m_entries.size() || compareEntries(newEntries[j], m_entries[row]))) {
+            ++j;
         }
-    }
-    if (!batchItems.isEmpty()) {
-        beginInsertRows(QModelIndex(), insertStart, insertStart + static_cast<int>(batchItems.size()) - 1);
-        for (int i = 0; i < batchItems.size(); ++i) {
-            m_entries.insert(insertStart + i, batchItems[i]);
+
+        beginInsertRows(QModelIndex(), row, row + (j - i) - 1);
+        for (int k = i; k < j; ++k) {
+            m_entries.insert(row + (k - i), newEntries[k]);
         }
         endInsertRows();
+
+        i = j;
     }
 
     emit entriesChanged();

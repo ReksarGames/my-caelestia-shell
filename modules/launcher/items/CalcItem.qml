@@ -1,51 +1,48 @@
-import qs.components
-import qs.services
-import qs.config
-import Caelestia
-import Quickshell
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Caelestia
+import Caelestia.Config
+import qs.components
+import qs.services
 
 Item {
     id: root
 
     required property var list
-    readonly property string math: list.search.text.slice(`${Config.launcher.actionPrefix}calc `.length)
+    readonly property string math: list.search.text.slice(`${GlobalConfig.launcher.actionPrefix}calc `.length)
+
+    function onClicked(): void {
+        Quickshell.execDetached(["wl-copy", Qalculator.rawResult]);
+        root.list.screenState.launcher = false;
+    }
 
     onMathChanged: {
         if (math.length > 0)
             Qalculator.evalAsync(math);
     }
 
-    function onClicked(): void {
-        Quickshell.execDetached(["wl-copy", Qalculator.rawResult]);
-        root.list.visibilities.launcher = false;
-    }
-
-    implicitHeight: Config.launcher.sizes.itemHeight
+    implicitHeight: Tokens.sizes.launcher.itemHeight
 
     anchors.left: parent?.left
     anchors.right: parent?.right
 
     StateLayer {
-        radius: Appearance.rounding.normal
-
-        function onClicked(): void {
-            root.onClicked();
-        }
+        radius: Tokens.rounding.large
+        onClicked: root.onClicked()
     }
 
     RowLayout {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.margins: Appearance.padding.larger
+        anchors.margins: Tokens.padding.medium
 
-        spacing: Appearance.spacing.normal
+        spacing: Tokens.spacing.medium
 
         MaterialIcon {
             text: "function"
-            font.pointSize: Appearance.font.size.extraLarge
+            fontStyle: Tokens.font.icon.extraLarge
             Layout.alignment: Qt.AlignVCenter
         }
 
@@ -69,23 +66,23 @@ Item {
 
         StyledRect {
             color: Colours.palette.m3tertiary
-            radius: Appearance.rounding.normal
+            radius: Tokens.rounding.large
             clip: true
 
-            implicitWidth: (stateLayer.containsMouse ? label.implicitWidth + label.anchors.rightMargin : 0) + icon.implicitWidth + Appearance.padding.normal * 2
-            implicitHeight: Math.max(label.implicitHeight, icon.implicitHeight) + Appearance.padding.small * 2
+            implicitWidth: (stateLayer.containsMouse ? label.implicitWidth + label.anchors.rightMargin : 0) + icon.implicitWidth + Tokens.padding.medium * 2
+            implicitHeight: Math.max(label.implicitHeight, icon.implicitHeight) + Tokens.padding.small
 
             Layout.alignment: Qt.AlignVCenter
 
             StateLayer {
                 id: stateLayer
 
-                color: Colours.palette.m3onTertiary
-
-                function onClicked(): void {
-                    Quickshell.execDetached(["app2unit", "--", ...Config.general.apps.terminal, "fish", "-C", `exec qalc -i '${root.math}'`]);
-                    root.list.visibilities.launcher = false;
+                onClicked: {
+                    Quickshell.execDetached([...GlobalConfig.general.apps.terminal, "fish", "-C", `exec qalc -i '${root.math}'`]);
+                    root.list.screenState.launcher = false;
                 }
+
+                color: Colours.palette.m3onTertiary
             }
 
             StyledText {
@@ -93,16 +90,18 @@ Item {
 
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: icon.left
-                anchors.rightMargin: Appearance.spacing.small
+                anchors.rightMargin: Tokens.spacing.small
 
                 text: qsTr("Open in calculator")
                 color: Colours.palette.m3onTertiary
-                font.pointSize: Appearance.font.size.normal
+                font: Tokens.font.label.medium
 
                 opacity: stateLayer.containsMouse ? 1 : 0
 
                 Behavior on opacity {
-                    Anim {}
+                    Anim {
+                        type: Anim.DefaultEffects
+                    }
                 }
             }
 
@@ -111,16 +110,16 @@ Item {
 
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
-                anchors.rightMargin: Appearance.padding.normal
+                anchors.rightMargin: Tokens.padding.medium
 
                 text: "open_in_new"
                 color: Colours.palette.m3onTertiary
-                font.pointSize: Appearance.font.size.large
+                fontStyle: Tokens.font.icon.large
             }
 
             Behavior on implicitWidth {
                 Anim {
-                    easing.bezierCurve: Appearance.anim.curves.emphasized
+                    type: Anim.Emphasized
                 }
             }
         }
