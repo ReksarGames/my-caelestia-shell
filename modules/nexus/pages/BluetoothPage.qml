@@ -45,7 +45,10 @@ PageBase {
             placeholderText: root.btEnabled ? qsTr("No saved devices") : qsTr("Bluetooth disabled")
 
             model: ScriptModel {
-                values: Bluetooth.devices.values.filter(d => d.bonded).sort((a, b) => (b.connected - a.connected) || a.name.localeCompare(b.name)) // qmllint disable unresolved-type
+                // BlueZ can report some classic audio devices as paired but not
+                // bonded. They are still saved and connectable, so keep them in
+                // the saved-device list after login/restart.
+                values: Bluetooth.devices.values.filter(d => d.bonded || d.paired).sort((a, b) => (b.connected - a.connected) || a.name.localeCompare(b.name)) // qmllint disable unresolved-type
             }
 
             delegate: StyledRect {

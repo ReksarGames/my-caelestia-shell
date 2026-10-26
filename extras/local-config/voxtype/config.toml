@@ -1,0 +1,30 @@
+state_file = "auto"
+
+[hotkey]
+enabled = false
+mode = "toggle"
+
+[audio]
+device = "pulse"
+max_duration_secs = 120
+pause_media = false
+duck_media = false
+
+[whisper]
+model = "/home/kirill/.local/share/voxtype/models/ggml-large-v3-turbo-q5_0.bin"
+language = "ru"
+translate = false
+on_demand_loading = true
+gpu_isolation = true
+
+[output]
+mode = "clipboard"
+
+[output.notification]
+on_recording_start = true
+on_recording_stop = true
+on_transcription = true
+on_no_speech = true
+
+[osd]
+enabled = false

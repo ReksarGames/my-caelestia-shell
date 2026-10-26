@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Io
 import Caelestia.Config
 import qs.components
 import qs.components.controls
@@ -8,6 +9,9 @@ import qs.modules.nexus.common
 
 PageBase {
     id: root
+
+    property string currentTimezone: "Europe/Stockholm"
+    property string requestedTimezone: ""
 
     // Temperature units (index 0 = Celsius, 1 = Fahrenheit — matches Weather.formatTemp)
     readonly property list<MenuItem> tempItems: [
@@ -29,7 +33,51 @@ PageBase {
         }
     ]
 
+    readonly property list<MenuItem> timezoneItems: [
+        MenuItem {
+            text: qsTr("Stockholm")
+        },
+        MenuItem {
+            text: qsTr("Kyiv")
+        }
+    ]
+    readonly property list<string> timezoneValues: ["Europe/Stockholm", "Europe/Kyiv"]
+
+    function timezoneIndex(): int {
+        const index = timezoneValues.indexOf(currentTimezone);
+        return index < 0 ? 0 : index;
+    }
+
+    function setTimezone(index: int): void {
+        requestedTimezone = timezoneValues[index];
+        timezoneSetter.command = ["pkexec", "timedatectl", "set-timezone", requestedTimezone];
+        timezoneSetter.running = true;
+    }
+
     title: qsTr("Language & region")
+
+    property Process timezoneReader: Process {
+        id: timezoneReader
+
+        running: true
+        command: ["timedatectl", "show", "--property=Timezone", "--value"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const timezone = text.trim();
+                if (timezone.length > 0)
+                    root.currentTimezone = timezone;
+            }
+        }
+    }
+
+    property Process timezoneSetter: Process {
+        id: timezoneSetter
+
+        onExited: exitCode => {
+            if (exitCode === 0)
+                root.currentTimezone = root.requestedTimezone;
+        }
+    }
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -161,12 +209,20 @@ PageBase {
 
         SelectRow {
             first: true
-            last: true
             label: qsTr("Clock format")
             subtext: qsTr("How times are shown across the shell")
             menuItems: root.clockItems
             active: root.clockItems[GlobalConfig.services.useTwelveHourClock ? 1 : 0]
             onSelected: item => GlobalConfig.services.useTwelveHourClock = root.clockItems.indexOf(item) === 1
+        }
+
+        SelectRow {
+            last: true
+            label: qsTr("Time zone")
+            subtext: qsTr("Changes the system time zone for all applications")
+            menuItems: root.timezoneItems
+            active: root.timezoneItems[root.timezoneIndex()]
+            onSelected: item => root.setTimezone(root.timezoneItems.indexOf(item))
         }
     }
 }

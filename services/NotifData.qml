@@ -53,8 +53,8 @@ QtObject {
         running: true
         interval: notif.expireTimeout > 0 ? notif.expireTimeout : notif.hasFullscreen ? GlobalConfig.notifs.fullscreenExpireTimeout : GlobalConfig.notifs.defaultExpireTimeout
         onTriggered: {
-            // Always expire if the active workspace has a fullscreen window
-            if (GlobalConfig.notifs.expire || notif.hasFullscreen)
+            // A zero timeout keeps recording indicators visible until replaced.
+            if (notif.expireTimeout !== 0 && (GlobalConfig.notifs.expire || notif.hasFullscreen))
                 notif.popup = false;
         }
     }
@@ -116,10 +116,12 @@ QtObject {
 
         function onSummaryChanged(): void {
             notif.summary = notif.notification.summary;
+            notif.refreshPopup();
         }
 
         function onBodyChanged(): void {
             notif.body = notif.notification.body;
+            notif.refreshPopup();
         }
 
         function onAppIconChanged(): void {
@@ -137,6 +139,7 @@ QtObject {
 
         function onExpireTimeoutChanged(): void {
             notif.expireTimeout = notif.notification.expireTimeout;
+            notif.timer.restart();
         }
 
         function onUrgencyChanged(): void {
@@ -166,6 +169,11 @@ QtObject {
         }
 
         target: notif.notification
+    }
+
+    function refreshPopup(): void {
+        popup = Notifs.shouldShowPopup();
+        timer.restart();
     }
 
     function updateTimeStr(): void {
