@@ -30,6 +30,7 @@ for _, key in ipairs({ "Shift_L", "Shift_R", "Alt_L", "Alt_R" }) do
     -- Use one absolute index so newly connected devices cannot drift apart.
     hl.bind("ALT + SHIFT + " .. key, hl.dsp.exec_cmd([[hyprctl -j devices | jq -r '.keyboards[] | select(.main) | (.active_layout_index + 1) % (.layout | split(",") | length)' | xargs -r hyprctl switchxkblayout all]]), {
         release = true,
+        locked = true,
         non_consuming = true,
         dont_inhibit = true,
     })
