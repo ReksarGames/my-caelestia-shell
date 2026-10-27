@@ -1,8 +1,9 @@
 # Пользовательская конфигурация
 
-Снимок настроек действующей установки от 26 октября 2026 г. Эти файлы находятся вне каталога Quickshell и сохраняются здесь вместе с исходниками Shell.
+Снимок настроек действующей установки от 27 октября 2026 г. Эти файлы находятся вне каталога Quickshell и сохраняются здесь вместе с исходниками Shell.
 
 - `caelestia/`: настройки Shell, переопределения и дополнительные хоткеи Hyprland.
+- `hypr/hyprland/input.lua`: настройки ввода и `Alt + Shift`, переключающий все клавиатуры на один номер раскладки. Требуются `jq` и `xargs`.
 - `voxtype/config.toml`: локальное распознавание русского через Whisper; `Super + Shift + D` включает/выключает запись, `Super + Shift + Escape` отменяет её.
 - `systemd/user/voxtype.service`: автозапуск Voxtype в графическом сеансе.
 
@@ -17,7 +18,7 @@ Voxtype 1.1.1, бинарный файл `~/.local/bin/voxtype` и модель 
 Если была установлена предыдущая версия снимка с привязкой к встроенному микрофону, предварительно удалите `~/.config/systemd/user/voxtype.service.d/microphone.conf`. В текущей версии этот override не используется.
 
 ```sh
-cp -a extras/local-config/caelestia extras/local-config/voxtype ~/.config/
+cp -a extras/local-config/caelestia extras/local-config/voxtype extras/local-config/hypr ~/.config/
 cp -a extras/local-config/systemd/user/. ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now voxtype
@@ -26,5 +27,7 @@ hyprctl reload
 ```
 
 Caelestia dotfiles должны загружать `~/.config/caelestia/hypr-user.lua` и `hypr-vars.lua`. После изменения QML перезапустите Shell: в этом снимке автоматическая перезагрузка файлов отключена.
+
+Проверка исправления раскладок в действующем Hyprland: `python3 tests/test_keyboard_layout.py` из корня репозитория. Проверка временно переключает EN/RU/UA, проверяет индикатор и синхронизацию устройств, затем восстанавливает исходный номер раскладки основной клавиатуры.
 
 Проверено на действующей установке: активные проигрыватели ставятся на паузу и возобновляются после записи, ранее приостановленные не запускаются; индикатор виден дольше штатного тайм-аута и при повторном запуске диктовки. Сборка C++ плагина из исходников при сохранении снимка не выполнялась.

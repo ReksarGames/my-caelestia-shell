@@ -25,7 +25,7 @@ Singleton {
     readonly property HyprlandMonitor focusedMonitor: Hyprland.focusedMonitor
     readonly property int activeWsId: focusedWorkspace?.id ?? 1
 
-    readonly property HyprKeyboard keyboard: extras.devices.keyboards.find(kb => kb.main) ?? null
+    property HyprKeyboard keyboard: null
     readonly property bool capsLock: keyboard?.capsLock ?? false
     readonly property bool numLock: keyboard?.numLock ?? false
     readonly property string defaultKbLayout: keyboard?.layout.split(",")[0] ?? "??"
@@ -163,6 +163,15 @@ Singleton {
         }
 
         target: Hyprland
+    }
+
+    Connections {
+        // Main flags change one keyboard at a time; select after the full update.
+        function onKeyboardsChanged(): void {
+            root.keyboard = root.extras.devices.keyboards.find(kb => kb.main) ?? null;
+        }
+
+        target: extras.devices
     }
 
     Connections {
