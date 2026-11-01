@@ -9,7 +9,6 @@ qml_module(caelestia-services
         cavaprovider.cpp
         tickingservice.cpp
         sensorslib.cpp
-        usagefmt.cpp
         cpu.cpp
         gpu.cpp
         memory.cpp
@@ -19,15 +18,20 @@ qml_module(caelestia-services
         lyrics.cpp
         sessionmanager.cpp
         networkusage.cpp
+        hyprdevices.cpp
+        hyprextras.cpp
     LIBRARIES
+        Qt::Concurrent
         Qt::DBus
+        Qt::Network
         PkgConfig::Pipewire
         PkgConfig::Aubio
         PkgConfig::Cava
         Sensors::Sensors
+        caelestia-util
         caelestia-core
         caelestia-config
-        caelestia-internal
     DEPENDENCIES
-        Caelestia.Internal
+        Caelestia
+        Caelestia.Config
 )

@@ -1,13 +1,26 @@
 # My Caelestia Shell
 
-Текущая рабочая конфигурация с ноутбука Kirill, обновлённая 27 октября 2026 г. Локальная версия Shell служит источником для ветки `main` этого форка.
+Текущая рабочая конфигурация с ноутбука Kirill, обновлённая 1 ноября 2026 г. Основа — Caelestia Shell 2.5.0. Локальная версия Shell служит источником для ветки `main` этого форка.
 
 - [Команды, горячие клавиши и голосовая диктовка](docs/Caelestia-документация.md)
 - [Снимок пользовательских настроек и служб](extras/local-config/README.md)
 
 Включены локальные изменения Bluetooth, часовых поясов и уведомлений. Индикатор диктовки остаётся видимым до остановки записи и появляется при повторном запуске. Диктовка использует выбранный системный микрофон, ставит активные проигрыватели на паузу и возобновляет их после остановки записи.
 
-`Alt + Shift` синхронизирует раскладку всех клавиатур, включая мультимедийные устройства. Индикатор и уведомления о раскладке обновляются после полного обновления устройств, без промежуточного `Unknown`.
+`Alt + Shift` срабатывает при нажатии второй клавиши и синхронизирует раскладку всех клавиатур, включая мультимедийные устройства. Это устраняет пропуски при разном порядке отпускания модификаторов в Hyprland 0.57. Состояние читается через `hl.get_devices()`, без внешнего запроса `devices`, `jq` и `xargs`. Индикатор и уведомления о раскладке обновляются после полного обновления устройств, без промежуточного `Unknown`.
+
+Для установки этой копии вместе с её нативными модулями в пользовательский каталог:
+
+```sh
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$HOME/.config/quickshell/caelestia" \
+    -DINSTALL_LIBDIR=lib -DINSTALL_QMLDIR=imports -DINSTALL_QSCONFDIR=. \
+    '-DCMAKE_INSTALL_RPATH=$ORIGIN'
+cmake --build build --parallel 2
+cmake --install build
+```
+
+Модули находятся в `imports/`, помощник версии — в `lib/`. В `shell.qml` задан путь `/home/kirill/.config/quickshell/caelestia/imports`; при переносе на другого пользователя его нужно заменить. Сборка и запуск проверены с Qt 6.12, Quickshell 0.3.2 и Hyprland 0.57.0. Проверка разных порядков Alt/Shift: `python3 tests/test_layout_shortcut.py` — 20 из 20 переключений.
 
 Ниже сохранена исходная документация проекта по сборке и установке.
 
@@ -102,6 +115,7 @@ Dependencies:
 -   `qt6-base`
 -   `qt6-declarative`
 -   `qt6-imageformats`
+-   [`qt6-m3shapes-git`](https://github.com/soramanew/m3shapes)
 -   [`swappy`](https://github.com/jtheoof/swappy)
 -   [`fish`](https://github.com/fish-shell/fish-shell)
 -   [`bash`](https://www.gnu.org/software/bash)
@@ -240,7 +254,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
 >
 > - `appearance`: `anim.*`, `transparency.*`
 > - `bar.tray`: `hiddenIcons`, `iconSubs`
-> - `bar.workspaces`: `ignoredTags`, `perMonitorWorkspaces`, `specialWorkspaceIcons`, `windowIcons`
+> - `bar.workspaces`: `ignoredTags`, `specialWorkspaceIcons`, `windowIcons`, `workspaceIcons`
 > - `dashboard`: `mediaUpdateInterval`, `resourceUpdateInterval`
 > - `general`: `apps.*`, `battery.*`, `idle.*`, `logo`
 > - `launcher`: `actionPrefix`, `actions`, `enableDangerousActions`, `favouriteApps`, `hiddenApps`, `specialPrefix`, `useFuzzy.*`, `vimKeybinds`
@@ -248,9 +262,8 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
 > - `nexus`: `networkRescanInterval`
 > - `notifs`: `actionOnClick`, `defaultExpireTimeout`, `expire`, `fullscreen`, `fullscreenExpireTimeout`
 > - `paths`: `lyricsDir`, `wallpaperDir`
-> - `services`: `audioIncrement`, `brightnessIncrement`, `defaultPlayer`, `gpuType`, `lyricsBackend`, `maxVolume`, `playerAliases`, `smartScheme`, `useFahrenheit`, `useFahrenheitPerformance`, `useTwelveHourClock`, `visualiserBars`, `weatherLocation`
-> - `utilities.toasts`: all except `fullscreen`
-> - `utilities.vpn`: `enabled`, `provider`, `selectedProvider`
+> - `services`: `audioIncrement`, `brightnessIncrement`, `clockFormat`, `dataUnits`, `defaultPlayer`, `gpuType`, `lyricsBackend`, `maxVolume`, `playerAliases`, `sensorUnits`, `smartScheme`, `visualiserBars`, `weatherLocation`, `weatherUnits`
+> - `utilities`: `toasts.*`, `vpn.*`
 >
 > </details>
 
@@ -437,19 +450,39 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
             "shown": 5,
             "activeIndicator": true,
             "occupiedBg": false,
+            "showUnoccupied": true,
+            "perMonitor": true,
             "showWindows": true,
             "showWindowsOnSpecialWorkspaces": true,
             "maxWindowIcons": 5,
             "activeTrail": false,
-            "perMonitorWorkspaces": true,
+            "displayType": "shapes",
+            "specialDisplayType": "icons",
             "label": "  ",
             "occupiedLabel": "󰮯",
             "activeLabel": "󰮯",
             "capitalisation": "preserve",
+            "workspaceIcons": [],
             "specialWorkspaceIcons": [
                 {
-                    "name": "steam",
-                    "icon": "sports_esports"
+                    "name": "special",
+                    "icon": "star"
+                },
+                {
+                    "name": "communication",
+                    "icon": "forum"
+                },
+                {
+                    "name": "music",
+                    "icon": "music_cast"
+                },
+                {
+                    "name": "todo",
+                    "icon": "checklist"
+                },
+                {
+                    "name": "sysmon",
+                    "icon": "monitor_heart"
                 }
             ],
             "ignoredTags": [
@@ -717,7 +750,7 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
     },
     "notifs": {
         "expire": true,
-        "fullscreen": "on",
+        "fullscreen": "On",
         "defaultExpireTimeout": 5000,
         "fullscreenExpireTimeout": 2000,
         "clearThreshold": 0.3,
@@ -734,10 +767,11 @@ For example, to automatically hide the bar on the monitor named `DP-1`:
     },
     "services": {
         "weatherLocation": "",
-        "useFahrenheit": false,
-        "useFahrenheitPerformance": false,
-        "useTwelveHourClock": false,
-        "gpuType": "",
+        "weatherUnits": "Auto",
+        "sensorUnits": "Celsius",
+        "dataUnits": "Binary",
+        "clockFormat": "Auto",
+        "gpuType": "Auto",
         "visualiserBars": 60,
         "audioIncrement": 0.1,
         "brightnessIncrement": 0.1,

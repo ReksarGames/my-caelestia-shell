@@ -1,5 +1,6 @@
 """Live Hyprland check: cycles layouts, then restores the original main layout."""
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -44,12 +45,17 @@ def switch(device, index):
 
 def main():
     original = next(k for k in devices() if k["main"])
-    command = re.search(r"hl\.dsp\.exec_cmd\(\[\[(.*?)\]\]\)",
+    command = re.search(r"(local function cycle_keyboard_layout\(\)[\s\S]*?)\nfor _, key",
                         (ROOT / "extras/local-config/hypr/hyprland/input.lua").read_text())[1]
+    command += "\ncycle_keyboard_layout()"
+    env = os.environ.copy()
+    imports = Path.home() / ".config/quickshell/caelestia/imports"
+    if imports.is_dir():
+        env["QML_IMPORT_PATH"] = f"{imports}:{env.get('QML_IMPORT_PATH', '')}"
     with tempfile.NamedTemporaryFile(dir=ROOT, prefix=".keyboard-test-", suffix=".qml") as qml, tempfile.TemporaryFile() as log:
         qml.write(PROBE.encode())
         qml.flush()
-        process = subprocess.Popen(["qs", "-p", qml.name], stdout=log, stderr=log)
+        process = subprocess.Popen(["qs", "-p", qml.name], stdout=log, stderr=log, env=env)
         try:
             for _ in range(100):
                 result = subprocess.run(["qs", "-p", qml.name, "ipc", "call", "keyboard-test", "state"],
@@ -64,7 +70,7 @@ def main():
             switch("all", 0)
             switch(devices()[0]["name"], 1)
             for expected, full, short in [(2, "Ukrainian", "ua"), (0, "English (US)", "us"), (1, "Russian", "ru")]:
-                subprocess.run(command, shell=True, check=True)
+                subprocess.run(["hyprctl", "eval", command], check=True, stdout=subprocess.DEVNULL)
                 for _ in range(100):
                     result = subprocess.check_output(["qs", "-p", qml.name, "ipc", "call", "keyboard-test", "state"])
                     state = json.loads(result)
@@ -76,10 +82,10 @@ def main():
                 assert all(k["active_layout_index"] == expected for k in devices())
                 print(f"PASS: all keyboards and Caelestia agree on {short} ({full})")
         finally:
-            switch("all", original["active_layout_index"])
             process.terminate()
             process.wait(timeout=5)
-            subprocess.run(["hyprctl", "reload"], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["hyprctl", "reload", "config-only"], check=True, stdout=subprocess.DEVNULL)
+            switch("all", original["active_layout_index"])
 
 
 if __name__ == "__main__":
