@@ -115,6 +115,8 @@ Dependencies:
 -   `qt6-base`
 -   `qt6-declarative`
 -   `qt6-imageformats`
+-   `qt6-location`
+-   `qt6-positioning`
 -   [`qt6-m3shapes-git`](https://github.com/soramanew/m3shapes)
 -   [`swappy`](https://github.com/jtheoof/swappy)
 -   [`fish`](https://github.com/fish-shell/fish-shell)
@@ -220,6 +222,11 @@ git pull
 All configuration options belong in `~/.config/caelestia/shell.json`. This file is _not_ created by
 default; you must create it manually. Options that you omit from the config file will use their default
 values.
+
+In **Settings → Language & region → Weather**, enter a city or click a point on the map.
+Drag to move the map and scroll or use the +/− buttons to zoom. The selected coordinates are saved
+in `services.weatherLocation` and used regardless of the VPN's location. Clear the field to restore
+automatic IP location detection. The map loads OpenStreetMap tiles over the internet.
 
 ### Per-monitor configuration
 

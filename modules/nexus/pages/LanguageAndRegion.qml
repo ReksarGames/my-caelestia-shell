@@ -160,43 +160,35 @@ PageBase {
             text: Tr.tr("Weather")
         }
 
-        // Placeholder until the map-based location picker lands
-        ConnectedRect {
-            Layout.fillWidth: true
+        TextFieldRow {
             first: true
-            last: true
-            implicitHeight: comingSoon.implicitHeight + Tokens.padding.extraLarge * 2
-
-            ColumnLayout {
-                id: comingSoon
-
-                anchors.centerIn: parent
-                width: parent.width - Tokens.padding.largeIncreased * 2
-                spacing: Tokens.padding.extraSmall
-
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "map"
-                    color: Colours.palette.m3outlineVariant
-                    fontStyle: Tokens.font.icon.extraLarge
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Tr.tr("Location picker coming soon")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.title.small
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    text: Tr.tr("Choose your weather location on a map in a future update")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.body.small
-                }
+            label: Tr.tr("City or coordinates")
+            subtext: Tr.tr("Enter a city in Latin letters, or choose a point below")
+            value: GlobalConfig.services.weatherLocation
+            placeholderText: Tr.tr("Location")
+            onEditingFinished: value => {
+                const location = value.trim();
+                if (GlobalConfig.services.weatherLocation === location)
+                    Weather.reload();
+                else
+                    GlobalConfig.services.weatherLocation = location;
             }
+        }
+
+        WeatherMap {
+            location: Weather.loc
+            city: Weather.city
+            onLocationSelected: location => GlobalConfig.services.weatherLocation = location
+        }
+
+        StyledText {
+            Layout.fillWidth: true
+            Layout.leftMargin: Tokens.padding.largeIncreased
+            visible: Weather.locationError.length > 0
+            text: Weather.locationError
+            color: Colours.palette.m3error
+            font: Tokens.font.body.small
+            wrapMode: Text.WordWrap
         }
 
         // Units

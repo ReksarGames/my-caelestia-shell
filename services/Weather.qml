@@ -13,6 +13,7 @@ Singleton {
 
     property string city
     property string loc
+    property string locationError
     property var cc
     property list<var> forecast
     property list<var> hourlyForecast
@@ -45,7 +46,7 @@ Singleton {
         if (configLocation) {
             if (configLocation.indexOf(",") !== -1 && !isNaN(parseFloat(configLocation.split(",")[0]))) {
                 loc = configLocation;
-                fetchCityFromCoords(configLocation);
+                cityLookupTimer.restart();
             } else {
                 fetchCoordsFromCity(configLocation);
             }
@@ -184,6 +185,9 @@ Singleton {
         };
 
         Requests.get(nominatimUrl, text => {
+            if (loc !== coords)
+                return;
+
             let geo;
             try {
                 geo = JSON.parse(text).features?.[0]?.properties.geocoding;
@@ -205,6 +209,9 @@ Singleton {
             console.warn(lc, "No locality in nominatim response");
             city = Tr.trCtx("Unknown city", "weather location unavailable");
         }, error => {
+            if (loc !== coords)
+                return;
+
             console.warn(lc, `Nominatim request failed: ${error}`);
             city = Tr.trCtx("Unknown city", "weather location unavailable");
         }, nominatimHeaders);
@@ -212,19 +219,38 @@ Singleton {
 
     function fetchCoordsFromCity(cityName: string): void {
         const lang = Qt.locale().name.split("_")[0] || "en";
+        // shortcut: Open-Meteo uses the first city match, add a result picker for ambiguous names.
         const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=${lang}&format=json`;
+        const onError = error => {
+            if (GlobalConfig.services.weatherLocation !== cityName)
+                return;
+
+            locationError = Tr.tr("Unable to look up city. Try again.");
+            console.warn(lc, `City lookup failed: ${error}`);
+        };
 
         Requests.get(url, text => {
-            const json = JSON.parse(text);
-            if (json.results && json.results.length > 0) {
-                const result = json.results[0];
-                loc = result.latitude + "," + result.longitude;
-                city = fixCityName(result.name);
-            } else {
-                loc = "";
-                reload();
+            if (GlobalConfig.services.weatherLocation !== cityName)
+                return;
+
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (error) {
+                onError(error);
+                return;
             }
-        });
+
+            const result = json?.results?.[0];
+            if (!result || !Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) {
+                locationError = Tr.tr("City not found. Check the spelling.");
+                return;
+            }
+
+            locationError = "";
+            city = fixCityName(result.name);
+            loc = result.latitude + "," + result.longitude;
+        }, onError);
     }
 
     function fetchWeatherData(): void {
@@ -232,7 +258,11 @@ Singleton {
         if (url === "")
             return;
 
+        const coords = loc;
         Requests.get(url, text => {
+            if (loc !== coords)
+                return;
+
             const json = JSON.parse(text);
             if (!json.current || !json.daily)
                 return;
@@ -337,6 +367,13 @@ Singleton {
 
     Connections {
         function onWeatherLocationChanged(): void {
+            root.locationError = "";
+            root.loc = "";
+            root.city = "";
+            root.cc = undefined;
+            root.forecast = [];
+            root.hourlyForecast = [];
+            root.pendingCoords = "";
             root.reload();
         }
 
@@ -348,6 +385,17 @@ Singleton {
         running: true
         repeat: true
         onTriggered: fetchWeatherData()
+    }
+
+    Timer {
+        id: cityLookupTimer
+
+        // Debounce map clicks to stay below Nominatim's one-request-per-second limit.
+        interval: 1100
+        onTriggered: {
+            if (root.loc && GlobalConfig.services.weatherLocation === root.loc)
+                root.fetchCityFromCoords(root.loc);
+        }
     }
 
     Timer {
