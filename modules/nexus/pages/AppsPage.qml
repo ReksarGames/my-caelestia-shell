@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 import Caelestia
 import Caelestia.Config
@@ -17,6 +18,66 @@ PageBase {
     id: root
 
     title: Tr.tr("Apps")
+
+    // Apps opened by the special-workspace hotkeys (Super+D etc.) live in caelestia CLI's cli.json → toggles.
+    // CLI built-in defaults (caelestia/subcommands/toggle.py); they must be disabled explicitly to be replaced.
+    readonly property var toggleDefaults: ({
+            communication: ["discord", "whatsapp"],
+            music: ["spotify", "feishin"],
+            sysmon: ["btop"],
+            todo: ["todoist"]
+        })
+    property var cliConfig: ({})
+
+    // Narrow the app picker per hotkey by .desktop Categories (plus a name fallback for apps with vague categories)
+    function hasCat(app: DesktopEntry, cats: list<string>): bool {
+        return cats.some(c => app.categories.includes(c));
+    }
+    readonly property var toggleFilters: ({
+            communication: a => hasCat(a, ["InstantMessaging", "Chat", "Telephony", "VideoConference", "IRCClient", "Email"]),
+            music: a => a.categories.includes("Music") || (a.categories.includes("Audio") && a.categories.includes("Player")),
+            todo: a => hasCat(a, ["ProjectManagement", "Calendar"]) || /todo|task|notion|obsidian|productiv/i.test(a.name + " " + a.id),
+            sysmon: a => (a.categories.includes("System") && a.categories.includes("Monitor")) || /system monitor|btop|htop|resources|mission center/i.test(a.name)
+        })
+
+    function toggleStatus(ws: string): string {
+        const entries = cliConfig.toggles?.[ws] ?? {};
+        const names = [...new Set([...toggleDefaults[ws], ...Object.keys(entries)])].filter(k => entries[k]?.enable ?? toggleDefaults[ws].includes(k));
+        return names.map(k => {
+            const cmd = entries[k]?.command ?? [];
+            return DesktopEntries.byId(cmd[0] === "gtk-launch" ? cmd[1] : k)?.name ?? k;
+        }).join(", ") || "Не задано";
+    }
+
+    function setToggleApp(ws: string, app: DesktopEntry): void {
+        const cfg = cliConfig;
+        if (!cfg.toggles)
+            cfg.toggles = {};
+        const old = cfg.toggles[ws] ?? {};
+        const next = {};
+        for (const k of [...toggleDefaults[ws], ...Object.keys(old)])
+            next[k] = Object.assign({}, old[k], { enable: false });
+        next[app.id] = {
+            enable: true,
+            match: [{ class: app.startupClass || app.id }],
+            command: ["gtk-launch", app.id],
+            move: true
+        };
+        cfg.toggles[ws] = next;
+        cliFile.setText(JSON.stringify(cfg, null, 2) + "\n");
+        cliConfig = Object.assign({}, cfg);
+    }
+
+    property FileView cliFile: FileView {
+        path: `${Paths.config}/cli.json`
+        onLoaded: {
+            try {
+                root.cliConfig = JSON.parse(text());
+            } catch (e) {
+                console.warn("AppsPage: cannot parse", path, e); // leave cliConfig empty → rows only show defaults
+            }
+        }
+    }
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -60,6 +121,45 @@ PageBase {
             onSelected: app => GlobalConfig.general.apps.explorer = app.command
         }
 
+        // Special-workspace hotkeys
+        SectionHeader {
+            text: "Горячие клавиши приложений"
+        }
+
+        DefaultRow {
+            first: true
+            icon: "forum"
+            label: "Общение · Super+D"
+            status: root.toggleStatus("communication")
+            appFilter: root.toggleFilters.communication
+            onSelected: app => root.setToggleApp("communication", app)
+        }
+
+        DefaultRow {
+            icon: "music_note"
+            label: "Музыка · Super+M"
+            status: root.toggleStatus("music")
+            appFilter: root.toggleFilters.music
+            onSelected: app => root.setToggleApp("music", app)
+        }
+
+        DefaultRow {
+            icon: "checklist"
+            label: "Задачи · Super+R"
+            status: root.toggleStatus("todo")
+            appFilter: root.toggleFilters.todo
+            onSelected: app => root.setToggleApp("todo", app)
+        }
+
+        DefaultRow {
+            last: true
+            icon: "monitor_heart"
+            label: "Системный монитор · Ctrl+Shift+Esc"
+            status: root.toggleStatus("sysmon")
+            appFilter: root.toggleFilters.sysmon
+            onSelected: app => root.setToggleApp("sysmon", app)
+        }
+
         // Library
         SectionHeader {
             text: Tr.trCtx("Library", "app library")
@@ -79,6 +179,8 @@ PageBase {
         id: row
 
         readonly property int popupHeight: root.flickable.height - y + root.flickable.contentY - Tokens.padding.large - Tokens.padding.extraExtraLarge
+
+        property var appFilter: null // fn(DesktopEntry) → bool; null = all apps
 
         signal selected(app: DesktopEntry)
 
@@ -104,7 +206,9 @@ PageBase {
                 implicitHeight: CUtils.clamp(row.popupHeight, Tokens.sizes.nexus.minPopupHeight, Tokens.sizes.nexus.maxPopupHeight)
 
                 model: {
-                    const apps = [...DesktopEntries.applications.values];
+                    const all = [...DesktopEntries.applications.values];
+                    const filtered = row.appFilter ? all.filter(a => row.appFilter(a)) : all;
+                    const apps = filtered.length ? filtered : all; // nothing matched → don't leave the picker empty
                     const favourited = new Set(apps.filter(a => Strings.testRegexList(GlobalConfig.launcher.favouriteApps, a.id)));
                     return apps.sort((a, b) => (favourited.has(b) - favourited.has(a)) || a.name.localeCompare(b.name));
                 }

@@ -20,6 +20,25 @@ Scope {
         onPressed: WindowFactory.create()
     }
 
+    // Super key state for sticky notes (Super+LMB move / Super+RMB resize). The desktop layer has no
+    // keyboard focus, so Qt never sees modifiers there; Hyprland reports Super via this global instead.
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "stickySuper"
+        description: "Super key held (sticky notes)"
+        onPressed: StickyNotes.superHeld = true
+        onReleased: StickyNotes.superHeld = false
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "desktopWidgets"
+        description: "Toggle desktop widgets (clock, visualiser, sticky notes)"
+        onPressed: StickyNotes.hidden = !StickyNotes.hidden
+    }
+
     // qmllint disable unresolved-type
     CustomShortcut {
         // qmllint enable unresolved-type
