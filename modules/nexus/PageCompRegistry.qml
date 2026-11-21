@@ -112,6 +112,9 @@ QtObject {
                 Component {
                     StickyNotesPage {}
                 }
+                Component {
+                    GesturesPage {}
+                }
             }
         },
 

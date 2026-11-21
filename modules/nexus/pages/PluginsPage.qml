@@ -16,11 +16,18 @@ PageBase {
 
         NavRow {
             first: true
-            last: true
             icon: "widgets"
             text: "Виджеты"
             subtext: "Часы, напоминалки на рабочем столе"
             onClicked: root.nState.openSubPage(1)
+        }
+
+        NavRow {
+            last: true
+            icon: "gesture"
+            text: "Управление жестами"
+            subtext: "Камера, курсор и рабочие столы"
+            onClicked: root.nState.openSubPage(4)
         }
     }
 }
