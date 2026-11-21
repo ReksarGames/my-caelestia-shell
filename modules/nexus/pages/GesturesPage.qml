@@ -1,8 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Io
 import Caelestia.Config
 import qs.components
+import qs.components.controls
 import qs.modules.nexus.common
 
 PageBase {
@@ -14,9 +16,91 @@ PageBase {
     property string loadState
     property string activeState
     property string errorText
+    property string bindingsError
+    property string hand: "left"
+    property var bindings: null
+    readonly property string gestureCommand: Quickshell.env("HOME") + "/.local/bin/gesture-caelestia"
     readonly property list<string> serviceCommand: ["systemctl", "--user"]
     readonly property string unit: "gesture-caelestia.service"
     readonly property bool busy: action.running || activeState === "activating" || activeState === "deactivating"
+
+    readonly property list<MenuItem> hands: [
+        MenuItem {
+            text: "Левая"
+            value: "left"
+        },
+        MenuItem {
+            text: "Правая"
+            value: "right"
+        }
+    ]
+    readonly property list<MenuItem> actions: [
+        MenuItem {
+            text: "Не назначено"
+            value: "none"
+        },
+        MenuItem {
+            text: "Рабочие столы"
+            value: "workspace"
+        },
+        MenuItem {
+            text: "Курсор"
+            value: "pointer"
+        },
+        MenuItem {
+            text: "ЛКМ / перетаскивание"
+            value: "left"
+        },
+        MenuItem {
+            text: "Правый клик"
+            value: "right"
+        },
+        MenuItem {
+            text: "Прокрутка"
+            value: "scroll"
+        },
+        MenuItem {
+            text: "Диктовка"
+            value: "dictation"
+        }
+    ]
+    readonly property var poses: [
+        {
+            key: "palm",
+            label: "Открытая ладонь"
+        },
+        {
+            key: "index-pinky",
+            label: "Указательный + мизинец"
+        },
+        {
+            key: "thumb-index",
+            label: "Большой + указательный"
+        },
+        {
+            key: "thumb-ring",
+            label: "Большой + безымянный",
+            hint: "Указательный и средний прямые"
+        },
+        {
+            key: "v-sign",
+            label: "Знак V",
+            hint: "Указательный и средний прямые, остальные согнуты"
+        },
+        {
+            key: "thumb-pinky",
+            label: "Большой + мизинец",
+            hint: "Остальные три пальца прямые"
+        }
+    ]
+
+    function bind(pose: string, value: string): void {
+        if (bindingProcess.running || bindings?.[hand]?.[pose] === value)
+            return;
+        bindingsError = "";
+        bindingProcess.command = [gestureCommand, "bind", hand, pose, value];
+        bindingProcess.running = true;
+    }
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -46,39 +130,60 @@ PageBase {
         }
 
         SectionHeader {
-            text: "Жесты"
+            text: "Назначения жестов"
         }
 
-        InfoRow {
+        SelectRow {
             first: true
-            icon: "swipe"
-            label: "Рабочие столы"
-            subtext: "Открытая ладонь влево → следующий, вправо → предыдущий"
-        }
-
-        InfoRow {
-            icon: "mouse"
-            label: "Курсор"
-            subtext: "Соедини указательный палец и мизинец и двигай кистью"
-        }
-
-        InfoRow {
-            icon: "touch_app"
-            label: "Левый клик и перетаскивание"
-            subtext: "Большой к указательному. Коснись средним или удерживай"
-        }
-
-        InfoRow {
-            icon: "ads_click"
-            label: "Правый клик"
-            subtext: "Большой к безымянному, указательный и средний прямые"
-        }
-
-        InfoRow {
             last: true
-            icon: "swap_vert"
-            label: "Прокрутка"
-            subtext: "Разведи указательный и средний и двигай кистью по нужной оси"
+            Layout.bottomMargin: Tokens.spacing.small
+            label: "Рука"
+            subtext: "Обе руки можно использовать одновременно"
+            menuItems: root.hands
+            active: root.hands.find(item => item.value === root.hand) ?? null
+            onSelected: item => root.hand = item.value
+        }
+
+        StyledText {
+            Layout.fillWidth: true
+            Layout.topMargin: Tokens.spacing.small
+            Layout.bottomMargin: Tokens.spacing.small
+            visible: text.length > 0
+            text: root.bindingsError
+            wrapMode: Text.WordWrap
+            font: Tokens.font.body.small
+        }
+
+        Repeater {
+            model: root.poses
+
+            SelectRow {
+                id: row
+
+                required property int index
+                required property var modelData
+                readonly property string selectedAction: root.bindings?.[root.hand]?.[modelData.key] ?? ""
+
+                first: index === 0
+                last: index === root.poses.length - 1
+                enabled: root.bindings !== null && !bindingProcess.running
+                menuOnTop: index >= 3
+                label: modelData.label
+                fallbackText: "—"
+                fallbackIcon: ""
+                subtext: {
+                    if (selectedAction === "workspace")
+                        return "Смахни влево для следующего стола, вправо для предыдущего";
+                    if (modelData.key === "thumb-index" && selectedAction === "left")
+                        return "Тап средним — клик. Удержание — перетаскивание";
+                    if (selectedAction === "dictation")
+                        return modelData.hint ? modelData.hint + " · Super+Shift+D" : "Super+Shift+D";
+                    return modelData.hint ?? "";
+                }
+                menuItems: root.actions
+                active: root.actions.find(item => item.value === row.selectedAction) ?? null
+                onSelected: item => root.bind(modelData.key, item.value)
+            }
         }
 
         Timer {
@@ -115,6 +220,25 @@ PageBase {
                 if (exitCode !== 0)
                     root.errorText = "Не удалось переключить службу жестов";
                 query.running = true;
+            }
+        }
+
+        Process {
+            id: bindingProcess
+
+            command: [root.gestureCommand, "bindings"]
+            running: true
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    if (text.trim())
+                        root.bindings = JSON.parse(text);
+                }
+            }
+
+            onExited: exitCode => {
+                if (exitCode !== 0)
+                    root.bindingsError = "Не удалось загрузить или сохранить назначения жестов";
             }
         }
     }
