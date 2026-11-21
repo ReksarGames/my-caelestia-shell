@@ -38,4 +38,4 @@ Caelestia dotfiles должны загружать `~/.config/caelestia/hypr-use
 
 ## Управление жестами
 
-Страница «Система → Плагины → Управление жестами» включает и останавливает службу `gesture-caelestia.service`. Для установки службы запусти `sh install.sh` в отдельном проекте `~/Project/gesture-caelestia`. AIRI может запускать ту же камеру через `systemctl --user start gesture-caelestia.service`.
+Страница «Система → Плагины → Управление жестами» включает и останавливает службу `gesture-caelestia.service`. Для установки службы запусти `sh install.sh` в отдельном проекте `~/Project/gesture-caelestia`. Любое приложение пользователя может управлять той же службой через команду `~/.local/bin/gesture-caelestia` с аргументом `start`, `stop` или `status`.
