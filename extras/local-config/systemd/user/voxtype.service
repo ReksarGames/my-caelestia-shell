@@ -12,6 +12,9 @@ RestartSec=5
 
 # Ensure we have access to the display
 Environment=XDG_RUNTIME_DIR=%t
+Environment=TMPDIR=%t/voxtype
+UMask=0077
+LimitCORE=0
 
 [Install]
 WantedBy=graphical-session.target
