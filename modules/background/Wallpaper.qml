@@ -12,7 +12,7 @@ import qs.utils
 Item {
     id: root
 
-    property string source: Wallpapers.current
+    property string source: Wallpapers.desktopImage
     property CachingImage current
     property bool completed
 

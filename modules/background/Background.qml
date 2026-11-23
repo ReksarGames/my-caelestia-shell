@@ -16,12 +16,13 @@ Variants {
         id: win
 
         required property ShellScreen modelData
+        readonly property bool showWallpaperImage: contentItem.Config.background.wallpaperEnabled && (!Wallpapers.workshopPlaying || Wallpapers.showDesktopPreview)
 
         screen: modelData
         name: "background"
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: contentItem.Config.background.wallpaperEnabled ? WlrLayer.Background : WlrLayer.Bottom
-        color: contentItem.Config.background.wallpaperEnabled ? "black" : "transparent"
+        WlrLayershell.layer: contentItem.Config.background.wallpaperEnabled && !Wallpapers.workshopPlaying ? WlrLayer.Background : WlrLayer.Bottom
+        color: showWallpaperImage ? "black" : "transparent"
         surfaceFormat.opaque: false
 
         anchors.top: true
@@ -47,6 +48,7 @@ Variants {
 
                 anchors.fill: parent
                 active: Config.background.wallpaperEnabled
+                visible: win.showWallpaperImage
 
                 sourceComponent: Wallpaper {}
             }
